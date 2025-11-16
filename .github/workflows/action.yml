@@ -1,17 +1,72 @@
-name: Deploy UML pages
+# name: Deploy UML pages
+
+# on:
+#   push:
+#     branches:
+#       - main
+
+# permissions:
+#   contents: write
+
+# jobs:
+#   deploy:
+#     runs-on: ubuntu-latest
+
+#     steps:
+#       - uses: actions/checkout@v3
+
+#       - name: Setup Java
+#         uses: actions/setup-java@v4
+#         with:
+#           distribution: 'temurin'
+#           java-version: '17'
+
+#       - name: Install Graphviz
+#         run: sudo apt-get update && sudo apt-get install -y graphviz
+
+#       - name: Render UML
+#         run: |
+#           curl -L -o plantuml.jar https://github.com/plantuml/plantuml/releases/latest/download/plantuml.jar
+#           mkdir -p site/uml
+#           OUTDIR="$(pwd)/site/uml"
+#           for f in uml/*.puml; do
+#             echo "Rendering $f ..."
+#             java -jar plantuml.jar -tpng -o "$OUTDIR" "$f"
+#           done
+
+#       - name: Generate index.html
+#         run: |
+#           echo "<h1>UML Diagrams</h1>" > site/index.html
+#           echo "<p>Tự động sinh bởi GitHub Actions</p>" >> site/index.html
+#           echo "<ul>" >> site/index.html
+
+#           for img in site/uml/*.png; do
+#             filename=$(basename "$img")
+#             echo "<li><h3>$filename</h3><img src=\"uml/$filename\" style=\"max-width:600px;\"></li>" >> site/index.html
+#           done
+
+#           echo "</ul>" >> site/index.html
+
+#       - name: Publish
+#         uses: peaceiris/actions-gh-pages@v3
+#         with:
+#           github_token: ${{ secrets.GITHUB_TOKEN }}
+#           publish_dir: ./site
+
+name: UML Validate & Render
 
 on:
+  pull_request:
+    paths:
+      - 'uml/**.puml'
   push:
-    branches:
-      - main
-
-permissions:
-  contents: write
+    branches: [ main ]
+    paths:
+      - 'uml/**.puml'
 
 jobs:
-  deploy:
+  build-uml:
     runs-on: ubuntu-latest
-
     steps:
       - uses: actions/checkout@v3
 
@@ -24,31 +79,27 @@ jobs:
       - name: Install Graphviz
         run: sudo apt-get update && sudo apt-get install -y graphviz
 
-      - name: Render UML
+      - name: Download PlantUML
+        run: curl -L -o plantuml.jar https://github.com/plantuml/plantuml/releases/latest/download/plantuml.jar
+
+      - name: Validate & Render UML
         run: |
-          curl -L -o plantuml.jar https://github.com/plantuml/plantuml/releases/latest/download/plantuml.jar
-          mkdir -p site/uml
-          OUTDIR="$(pwd)/site/uml"
-          for f in uml/*.puml; do
-            echo "Rendering $f ..."
-            java -jar plantuml.jar -tpng -o "$OUTDIR" "$f"
+          mkdir -p uml-out
+          for f in $(git ls-files 'uml/*.puml'); do
+            echo "Processing $f"
+            java -jar plantuml.jar -tpng -o uml-out "$f" || {
+              echo "Syntax error in $f"
+              exit 1
+            }
           done
 
-      - name: Generate index.html
+      - name: Commit generated diagrams
         run: |
-          echo "<h1>UML Diagrams</h1>" > site/index.html
-          echo "<p>Tự động sinh bởi GitHub Actions</p>" >> site/index.html
-          echo "<ul>" >> site/index.html
+          git config user.email "ci-bot@example.com"
+          git config user.name "CI Bot"
 
-          for img in site/uml/*.png; do
-            filename=$(basename "$img")
-            echo "<li><h3>$filename</h3><img src=\"uml/$filename\" style=\"max-width:600px;\"></li>" >> site/index.html
-          done
-
-          echo "</ul>" >> site/index.html
-
-      - name: Publish
-        uses: peaceiris/actions-gh-pages@v3
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./site
+          git add uml-out/*.png
+          if ! git diff --cached --quiet; then
+            git commit -m "Auto-update UML diagrams"
+            git push
+          fi
