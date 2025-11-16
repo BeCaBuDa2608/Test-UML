@@ -86,9 +86,11 @@ jobs:
       - name: Validate & Render UML
         run: |
           mkdir -p uml-out
+          OUTDIR="$(pwd)/uml-out"
+
           for f in uml/*.puml; do
             echo "Processing $f"
-            java -jar plantuml.jar -tpng -o uml-out "$f" || {
+            java -jar plantuml.jar -tpng -output "$OUTDIR" "$f" || {
               echo "Syntax error in $f"
               exit 1
             }
