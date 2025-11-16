@@ -28,11 +28,10 @@ jobs:
         run: |
           curl -L -o plantuml.jar https://github.com/plantuml/plantuml/releases/latest/download/plantuml.jar
           mkdir -p site/uml
-
-          # Loop qua tất cả file .puml trong thư mục uml/
+          OUTDIR="$(pwd)/site/uml"
           for f in uml/*.puml; do
             echo "Rendering $f ..."
-            java -jar plantuml.jar -tpng -o site/uml "$f"
+            java -jar plantuml.jar -tpng -o "$OUTDIR" "$f"
           done
 
       - name: Generate index.html
