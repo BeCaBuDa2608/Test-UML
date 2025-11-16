@@ -28,18 +28,24 @@ jobs:
         run: |
           curl -L -o plantuml.jar https://github.com/plantuml/plantuml/releases/latest/download/plantuml.jar
           mkdir -p site/uml
-          for f in $(git ls-files 'uml/*.puml'); do
+
+          # Loop qua tất cả file .puml trong thư mục uml/
+          for f in uml/*.puml; do
+            echo "Rendering $f ..."
             java -jar plantuml.jar -tpng -o site/uml "$f"
           done
 
       - name: Generate index.html
         run: |
           echo "<h1>UML Diagrams</h1>" > site/index.html
+          echo "<p>Tự động sinh bởi GitHub Actions</p>" >> site/index.html
           echo "<ul>" >> site/index.html
-          for f in site/uml/*.png; do
-            filename=$(basename "$f")
-            echo "<li><img src=\"uml/$filename\" style=\"max-width:600px;\"></li>" >> site/index.html
+
+          for img in site/uml/*.png; do
+            filename=$(basename "$img")
+            echo "<li><h3>$filename</h3><img src=\"uml/$filename\" style=\"max-width:600px;\"></li>" >> site/index.html
           done
+
           echo "</ul>" >> site/index.html
 
       - name: Publish
